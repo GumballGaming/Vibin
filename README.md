@@ -9,6 +9,8 @@ bun install
 bun run dev
 ```
 
+For Windows, run `.\install.ps1` from the repository. It installs `vibin.exe` into your user-local PATH and launches it. Use `.\install.ps1 -NoLaunch` if you only want to install it.
+
 Inside Vibin, run `/provider add`. Its guided setup connects the provider, fetches the models exposed by your API key, and presents a searchable picker—there is no model-ID setup step. Profile names are optional. It saves the selection locally to `.vibin/config.json` (which is ignored by Git), then activates it immediately. Use `/provider list` to see profiles and `/provider use <name>` to switch without restarting.
 
 Environment variables in `.env` remain supported as an optional automation override. For OpenRouter, choose `openrouter` and a model such as `openai/gpt-4.1-mini`.
