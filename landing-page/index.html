@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Vibin is the focused coding agent for your terminal." />
+    <title>Vibin — Stay in the flow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <nav class="nav container" aria-label="Primary navigation">
+        <a class="brand" href="#top" aria-label="Vibin home"><img class="brand-logo" src="vibin-logo.png" alt="" /><span>vibin</span></a>
+        <div class="nav-links">
+          <a href="#how-it-works">How it works</a>
+          <a href="#features">Features</a>
+        </div>
+        <div class="nav-actions">
+          <button class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false">
+            <span class="theme-toggle__sun" aria-hidden="true">☼</span>
+            <span class="theme-toggle__moon" aria-hidden="true">☾</span>
+          </button>
+          <a class="button button-small" href="#get-started">Get Vibin <span aria-hidden="true">↗</span></a>
+        </div>
+      </nav>
+
+      <section class="hero container" id="top">
+        <div class="eyebrow"><span></span> A focused coding agent for your terminal</div>
+        <h1>Make the work<br /><em>feel like flow.</em></h1>
+        <p class="hero-copy">Vibin handles the busywork around building software, so you can stay in the part where the ideas happen.</p>
+        <div class="hero-actions" id="get-started">
+          <a class="button button-primary" href="#install">Start creating <span aria-hidden="true">→</span></a>
+          <a class="text-link" href="#how-it-works">See how it works <span aria-hidden="true">↓</span></a>
+        </div>
+
+        <div class="terminal" aria-label="Vibin terminal demo">
+          <div class="terminal-bar"><span></span><span></span><span></span><p>vibin — project workspace</p></div>
+          <div class="terminal-body">
+            <p><b class="prompt">~</b> <span class="command">vibin</span> <span class="muted">"add a delightful empty state to the projects view"</span></p>
+            <p class="gap"><span class="violet">●</span> I found the projects view. I'll first inspect its UI patterns, then make the change.</p>
+            <p><span class="lime">✓</span> Read <span class="file">src/views/projects.tsx</span></p>
+            <p><span class="lime">✓</span> Read <span class="file">src/styles/components.css</span></p>
+            <p><span class="violet">●</span> Here's a plan:</p>
+            <ol><li>Add a reusable EmptyState component</li><li>Match the existing visual language</li><li>Wire it into the no-projects state</li></ol>
+            <p class="cursor-line"><b class="prompt">?</b> Apply these changes? <span class="approval">[y/N]</span><i></i></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="intro container" id="how-it-works">
+        <p class="section-label">01 / THE VIBE</p>
+        <div class="intro-grid"><h2>Less managing.<br />More <em>making.</em></h2><p>Most coding agents want to take the wheel. Vibin wants to be the best co-pilot you've ever had: capable, clear, and always asking before it touches your work.</p></div>
+      </section>
+
+      <section class="features container" id="features">
+        <article class="feature feature-large"><span class="number">01</span><div class="feature-icon">✦</div><h3>Stays in context</h3><p>Smart, bounded project context means relevant help without loading your whole world into every request.</p><div class="orb orb-violet"></div></article>
+        <article class="feature"><span class="number">02</span><div class="feature-icon">⌁</div><h3>You call the shots</h3><p>Vibin shows its work and asks first. Every change is yours to approve.</p></article>
+        <article class="feature"><span class="number">03</span><div class="feature-icon">↗</div><h3>Bring your model</h3><p>Connect OpenAI or OpenRouter, choose the model that fits the moment, and get moving.</p></article>
+      </section>
+
+      <section class="install container" id="install"><p class="section-label">02 / GET IN THE FLOW</p><h2>Your terminal has<br />a new <em>favorite tool.</em></h2><div class="install-row"><code><span>$</span> bun install -g vibin</code><button type="button" id="copy-button" aria-label="Copy install command">Copy</button></div><p class="install-note">Built with Bun. Ready when you are.</p></section>
+    </main>
+    <footer class="footer container"><a class="brand" href="#top"><img class="brand-logo" src="vibin-logo.png" alt="" /><span>vibin</span></a><p>Made for people who make things.</p><a href="#top">Back to top ↑</a></footer>
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vibin Car Game</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #0f1220;
+      color: #e6e8f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 12px;
+    }
+    h1 { margin: 0; font-size: 20px; letter-spacing: 0.5px; }
+    #game {
+      background: #15192b;
+      border: 1px solid #2a3050;
+      border-radius: 10px;
+      display: block;
+    }
+    #hud {
+      display: flex;
+      gap: 20px;
+      font-variant-numeric: tabular-nums;
+    }
+    #hint { font-size: 13px; opacity: 0.7; }
+    button {
+      background: #2a3050;
+      color: #e6e8f0;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: #353c63; }
+  </style>
+</head>
+<body>
+  <h1>🏎️ Vibin Car Game</h1>
+  <div id="hud">
+    <span>Score: <b id="score">0</b></span>
+    <span>Best: <b id="best">0</b></span>
+  </div>
+  <canvas id="game" width="360" height="540"></canvas>
+  <div id="hint">Use ← / → (or A / D) to steer. Avoid the oncoming cars.</div>
+  <button id="restart" hidden>Restart</button>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const bestEl = document.getElementById("best");
+    const restartBtn = document.getElementById("restart");
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const LANES = 3;
+    const LANE_W = W / LANES;
+
+    let player, obstacles, speed, score, best, running, lastSpawn, keys;
+
+    best = Number(localStorage.getItem("vibin-car-best") || 0);
+    bestEl.textContent = best;
+
+    function reset() {
+      player = { lane: 1, w: 40, h: 70 };
+      obstacles = [];
+      speed = 3;
+      score = 0;
+      running = true;
+      lastSpawn = 0;
+      keys = {};
+      restartBtn.hidden = true;
+      scoreEl.textContent = "0";
+    }
+
+    function spawnObstacle() {
+      const lane = Math.floor(Math.random() * LANES);
+      obstacles.push({ lane, y: -80, w: 40, h: 70 });
+    }
+
+    function laneCenter(lane) {
+      return lane * LANE_W + LANE_W / 2;
+    }
+
+    function drawCar(x, y, w, h, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(x - w / 2, y - h / 2, w, h, 8);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.15)";
+      ctx.fillRect(x - w / 2 + 6, y - h / 2 + 8, w - 12, h - 16);
+    }
+
+    function update() {
+      if (!running) return;
+
+      if (keys["ArrowLeft"] || keys["a"] || keys["A"]) player.lane = Math.max(0, player.lane - 0.08);
+      if (keys["ArrowRight"] || keys["d"] || keys["D"]) player.lane = Math.min(LANES - 1, player.lane + 0.08);
+
+      // smooth lane-to-lane handled above; allow integer snapping feel via rounding for collision
+      speed += 0.002;
+      score += 0.05;
+      scoreEl.textContent = Math.floor(score);
+
+      if (performance.now() - lastSpawn > 900 - Math.min(500, speed * 30)) {
+        spawnObstacle();
+        lastSpawn = performance.now();
+      }
+
+      const px = laneCenter(player.lane);
+      for (const o of obstacles) {
+        o.y += speed;
+        const ox = laneCenter(o.lane);
+        if (
+          Math.abs(px - ox) < (player.w + o.w) / 2 - 6 &&
+          Math.abs(H - 60 - o.y) < (player.h + o.h) / 2 - 6
+        ) {
+          gameOver();
+        }
+      }
+      obstacles = obstacles.filter((o) => o.y < H + 100);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      // road
+      ctx.fillStyle = "#1c2138";
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([18, 18]);
+      for (let i = 1; i < LANES; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * LANE_W, 0);
+        ctx.lineTo(i * LANE_W, H);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      for (const o of obstacles) {
+        drawCar(laneCenter(o.lane), o.y, o.w, o.h, "#e0556b");
+      }
+      drawCar(laneCenter(player.lane), H - 60, player.w, player.h, "#5ad17a");
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function gameOver() {
+      running = false;
+      const finalScore = Math.floor(score);
+      if (finalScore > best) {
+        best = finalScore;
+        localStorage.setItem("vibin-car-best", String(best));
+        bestEl.textContent = best;
+      }
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(0, H / 2 - 50, W, 100);
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.font = "24px system-ui, sans-serif";
+      ctx.fillText("Game Over", W / 2, H / 2 - 6);
+      ctx.font = "16px system-ui, sans-serif";
+      ctx.fillText("Score: " + finalScore, W / 2, H / 2 + 22);
+      restartBtn.hidden = false;
+    }
+
+    window.addEventListener("keydown", (e) => {
+      keys[e.key] = true;
+      if (["ArrowLeft", "ArrowRight"].includes(e.key)) e.preventDefault();
+    });
+    window.addEventListener("keyup", (e) => { keys[e.key] = false; });
+    restartBtn.addEventListener("click", reset);
+
+    reset();
+    loop();
+  </script>
+</body>
+</html>
