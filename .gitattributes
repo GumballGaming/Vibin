@@ -1,0 +1,2 @@
+dist/vibin.exe filter=lfs diff=lfs merge=lfs -text
+dist/VibinSetup.exe filter=lfs diff=lfs merge=lfs -text

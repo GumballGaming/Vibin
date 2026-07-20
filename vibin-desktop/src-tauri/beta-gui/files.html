@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vibe-In · Files</title>
+<style>
+  :root {
+    --bg:#f7eee6;--surface:#fff8f1;--surface-warm:#ead6c7;--fg:#2b211c;--fg-2:#5a4b43;--muted:#8a7a70;--meta:#b46a46;
+    --border:#dac8b9;--border-soft:#eaded4;--accent:#b46a46;--accent-on:#fff;
+    --font-display:'Iowan Old Style','Charter',Georgia,serif;--font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;--font-mono:'SF Mono',ui-monospace,Menlo,monospace;
+    --radius-md:22px;--radius-sm:14px;--radius-lg:34px;--elev-raised:8px 10px 24px rgba(128,92,70,0.18),-8px -8px 20px rgba(255,255,255,0.7);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);-webkit-font-smoothing:antialiased;line-height:1.5}
+  .topbar{position:sticky;top:0;z-index:10;background:color-mix(in oklab,var(--bg) 92%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .topbar-in{display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;padding:14px 32px}
+  .logo{font-family:var(--font-display);font-size:20px;font-weight:600;display:flex;align-items:center;gap:10px}
+  .logo .mark{width:34px;height:34px;border-radius:11px;background:var(--accent);color:var(--accent-on);display:grid;place-items:center;font-size:17px}
+  .back{font-size:14px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--accent)}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:32px}
+  h1{font-family:var(--font-display);font-size:38px;font-weight:600;letter-spacing:-.02em;margin:0 0 6px}
+  .sub{color:var(--muted);margin:0 0 28px}
+
+  .ftree{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px}
+  .fnode{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px}
+  .fnode:hover{background:var(--bg)}
+  .ficon{width:18px;height:18px;flex-shrink:0;display:grid;place-items:center;font-family:var(--font-mono);font-size:9px;font-weight:700}
+  .fname{flex:1;font-size:14px}
+  .fname .path{color:var(--muted);font-family:var(--font-mono);font-size:12px}
+  .fsize{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+  .fgroup{margin:4px 0 14px}
+  .glabel{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);padding:6px 10px}
+
+  .lc-ts,.lc-tsx{color:#3178c6}.lc-js{color:#b89200}.lc-rust,.lc-rs{color:#b5643f}.lc-py{color:#3776ab}.lc-go{color:#0089b3}.lc-css{color:#663399}.lc-json{color:#b8a800}.lc-md{color:#3a7ca5}
+  .lc-ts{border:1.4px solid #3178c6}.lc-tsx{border:1.4px solid #3178c6}.lc-js{border:1.4px solid #b89200}.lc-rust,.lc-rs{border:1.4px solid #b5643f}.lc-py{border:1.4px solid #3776ab}.lc-go{border:1.4px solid #0089b3}.lc-css{border:1.4px solid #663399}.lc-json{border:1.4px solid #b8a800}.lc-md{border:1.4px solid #3a7ca5}
+  .ftree .ficon{border-radius:5px}
+  @media(max-width:700px){.wrap{padding:18px}.topbar-in{padding:14px 18px}}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="topbar-in">
+  <span class="logo"><span class="mark">V</span> Vibe-In</span>
+  <a class="back" href="app.html">← Back to app</a>
+</div></div>
+
+<main class="wrap">
+  <h1>Project files</h1>
+  <p class="sub">Vibe-In workspace · branch <b>wt/oauth-github</b></p>
+
+  <div class="ftree">
+    <div class="glabel">src/</div>
+    <div class="fnode"><span class="ficon lc-ts">TS</span><span class="fname">auth/session.ts <span class="path">— session store shape</span></span><span class="fsize">4.2k</span></div>
+    <div class="fnode"><span class="ficon lc-ts">TS</span><span class="fname">auth/github.ts <span class="path">— OAuth callback</span></span><span class="fsize">2.8k</span></div>
+    <div class="fnode"><span class="ficon lc-tsx">TX</span><span class="fname">components/Login.tsx <span class="path">— login screen</span></span><span class="fsize">6.1k</span></div>
+    <div class="fnode"><span class="ficon lc-rs">RS</span><span class="fname">native/thumb.rs <span class="path">— image thumbnailer</span></span><span class="fsize">3.4k</span></div>
+    <div class="fnode"><span class="ficon lc-js">JS</span><span class="fname">scripts/build.js <span class="path">— build step</span></span><span class="fsize">1.1k</span></div>
+    <div class="fnode"><span class="ficon lc-py">PY</span><span class="fname">tests/upload_test.py <span class="path">— flaky test</span></span><span class="fsize">0.9k</span></div>
+    <div class="fnode"><span class="ficon lc-json">{}</span><span class="fname">package.json</span><span class="fsize">1.6k</span></div>
+    <div class="fnode"><span class="ficon lc-md">MD</span><span class="fname">README.md</span><span class="fsize">2.0k</span></div>
+  </div>
+</main>
+</body>
+</html>

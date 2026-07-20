@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vibe-In · Chat</title>
+<style>
+  :root {
+    --bg:#f7eee6;--surface:#fff8f1;--surface-warm:#ead6c7;--fg:#2b211c;--fg-2:#5a4b43;--muted:#8a7a70;--meta:#b46a46;
+    --border:#dac8b9;--border-soft:#eaded4;--accent:#b46a46;--accent-on:#fff;--success:#4d8f5a;--danger:#b84c4c;--warn:#c88735;
+    --font-display:'Iowan Old Style','Charter',Georgia,serif;--font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;--font-mono:'SF Mono',ui-monospace,Menlo,monospace;
+    --radius-md:22px;--radius-sm:14px;--radius-pill:999px;--elev-raised:8px 10px 24px rgba(128,92,70,0.18),-8px -8px 20px rgba(255,255,255,0.7);--focus-ring:0 0 0 4px rgba(180,106,70,0.24);--ease:cubic-bezier(.2,0,0,1);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+
+  .topbar{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--border-soft)}
+  .logo{font-family:var(--font-display);font-size:18px;font-weight:600;display:flex;align-items:center;gap:9px}
+  .logo .mark{width:30px;height:30px;border-radius:10px;background:var(--accent);color:var(--accent-on);display:grid;place-items:center;font-size:15px}
+  .back{font-size:13px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--accent)}
+  .git-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-family:var(--font-mono);font-size:11px;border:1px solid var(--border);color:var(--fg-2);background:var(--surface)}
+  .git-badge.worktree{color:var(--accent);border-color:color-mix(in oklab,var(--accent) 40%,transparent);background:color-mix(in oklab,var(--accent) 10%,transparent)}
+  .git-badge svg{width:12px;height:12px}
+  .spacer{flex:1}
+
+  .chat{flex:1;overflow-y:auto;padding:24px 0}
+  .chat::-webkit-scrollbar{width:9px}.chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+  .inner{max-width:760px;margin:0 auto;padding:0 24px}
+  .msg{display:flex;gap:12px;margin-bottom:22px}
+  .ava{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:grid;place-items:center;font-family:var(--font-mono);font-size:12px;font-weight:600}
+  .ava.user{background:var(--surface-warm);color:var(--fg-2)}.ava.agent{background:var(--accent);color:var(--accent-on)}
+  .msg-name{font-size:13px;font-weight:600;margin-bottom:4px}.msg-name span{color:var(--muted);font-weight:400;margin-left:6px;font-family:var(--font-mono);font-size:11px}
+  .msg-text{font-size:15px;line-height:1.6;color:var(--fg-2)}.msg.user .msg-text{color:var(--fg)}
+  .file-ref{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;margin:0 1px;border-radius:7px;background:color-mix(in oklab,var(--accent) 12%,transparent);color:var(--accent);font-family:var(--font-mono);font-size:13px;border:1px solid color-mix(in oklab,var(--accent) 30%,transparent)}
+  .file-ref svg{width:12px;height:12px}
+  .callout{border:1px solid var(--border);border-left:3px solid var(--accent);background:var(--surface);border-radius:12px;padding:14px 16px;margin:8px 0 22px}
+  .callout.help{border-left-color:var(--danger);background:color-mix(in oklab,var(--danger) 8%,transparent)}
+  .callout.done{border-left-color:var(--success);background:color-mix(in oklab,var(--success) 8%,transparent)}
+  .callout .ct{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .callout.help .ct{color:var(--danger)}.callout.done .ct{color:var(--success)}
+  .callout p{margin:6px 0 0;font-size:13px;color:var(--fg-2)}
+  .run{display:inline-flex;align-items:center;gap:8px;margin:2px 0 18px;padding:6px 12px;border-radius:999px;background:color-mix(in oklab,var(--accent) 9%,transparent);border:1px solid color-mix(in oklab,var(--accent) 26%,transparent);color:var(--accent);font-size:13px;font-weight:500}
+  .run .dot{width:8px;height:8px;border-radius:99px;background:var(--accent);position:relative}
+  .run .dot::after{content:'';position:absolute;inset:-3px;border-radius:99px;border:2px solid color-mix(in oklab,var(--accent) 55%,transparent);animation:pulse 1.6s ease-out infinite}
+  @keyframes pulse{0%{transform:scale(.7);opacity:.9}70%{transform:scale(1.5);opacity:0}100%{opacity:0}}
+  .run .txt{color:var(--fg-2)}
+  .run .txt b{color:var(--accent);font-weight:600}
+
+  .composer{border-top:1px solid var(--border-soft);padding:14px 22px 18px;background:var(--bg)}
+  .composer-inner{max-width:760px;margin:0 auto}
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;transition:border-color .15s,box-shadow .15s}
+  .box:focus-within{border-color:var(--accent);box-shadow:var(--focus-ring)}
+  .refs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .cref{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:8px;font-family:var(--font-mono);font-size:12px;background:color-mix(in oklab,var(--accent) 12%,transparent);color:var(--accent);border:1px solid color-mix(in oklab,var(--accent) 30%,transparent)}
+  .cref button{display:grid;place-items:center;color:inherit;opacity:.7}.cref button:hover{opacity:1}.cref svg{width:11px;height:11px}
+  .row{display:flex;align-items:flex-end;gap:10px}
+  textarea{flex:1;border:0;resize:none;background:none;color:var(--fg);font:inherit;font-size:15px;line-height:1.5;max-height:140px;padding:6px 2px}
+  textarea:focus{outline:none}
+  .tools{display:flex;align-items:center;gap:4px}
+  .ctool{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--muted)}.ctool:hover{background:var(--bg);color:var(--accent)}.ctool svg{width:19px;height:19px}
+  .send{width:38px;height:38px;border-radius:12px;background:var(--accent);color:var(--accent-on);display:grid;place-items:center;transition:background .15s,transform .1s}.send:hover{background:color-mix(in oklab,var(--accent) 88%,black)}.send:active{transform:translateY(1px)}.send svg{width:18px;height:18px}
+
+  .toast-wrap{position:fixed;right:22px;bottom:22px;display:flex;flex-direction:column;gap:12px;z-index:60;width:320px}
+  .toast{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--danger);border-radius:var(--radius-sm);padding:14px 16px;box-shadow:var(--elev-raised);animation:tin 320ms var(--ease) both}
+  @keyframes tin{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+  .tt-top{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--danger)}.tt-bell{width:18px;height:18px}
+  .toast p{margin:6px 0 0;font-size:13px;color:var(--fg-2)}
+  .tt-actions{display:flex;gap:8px;margin-top:12px}
+  .tt-btn{padding:7px 12px;border-radius:10px;font-size:13px;font-weight:500;border:1px solid var(--border);color:var(--fg-2)}.tt-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .tt-btn.go{background:var(--accent);color:var(--accent-on);border-color:var(--accent)}.tt-btn.go:hover{background:color-mix(in oklab,var(--accent) 88%,black);color:var(--accent-on)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="logo"><span class="mark">V</span> Vibe-In</span>
+  <a class="back" href="app.html">← App</a>
+  <span class="spacer"></span>
+  <span class="git-badge worktree">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 8.4v7.2M8.4 6.6c5 0 6 1.6 6 4.4"/></svg>
+    wt/oauth-github
+  </span>
+</div>
+
+<div class="chat" id="chat">
+  <div class="inner" id="inner">
+    <div class="msg"><div class="ava user">YO</div><div class="msg-body"><div class="msg-name">You <span>09:41</span></div><div class="msg-text">Add GitHub OAuth login and reference <span class="file-ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h16"/></svg>src/auth/session.ts</span> for the store shape.</div></div></div>
+    <div class="msg"><div class="ava agent">AI</div><div class="msg-body"><div class="msg-name">Vibe agent <span>09:41</span></div><div class="msg-text">On it — working inside <b>wt/oauth-github</b> so master stays clean.</div></div></div>
+    <div class="run"><span class="dot"></span><span class="txt">Running · editing <b>src/auth/github.ts</b> in <b>wt/oauth-github</b>…</span></div>
+    <div class="msg"><div class="ava agent">AI</div><div class="msg-body"><div class="msg-name">Vibe agent <span>09:43</span></div><div class="msg-text">Callback handler is in. Want a "Continue with GitHub" button too?</div></div></div>
+    <div class="callout help"><div class="ct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg> Needs your review</div><p>GitHub returns no email for private-email accounts. Fall back to asking the user, or generate a placeholder? Reviewing in <b>wt/oauth-github</b>.</p></div>
+  </div>
+</div>
+
+<div class="composer">
+  <div class="composer-inner">
+    <div class="box">
+      <div class="refs" id="refs">
+        <span class="cref">src/auth/session.ts<button title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></span>
+      </div>
+      <div class="row">
+        <textarea id="input" rows="1" placeholder="Message the agent…  use @ to reference a file"></textarea>
+        <div class="tools">
+          <button class="ctool" id="ref-file" title="Reference a file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/></svg></button>
+          <button class="send" id="send" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 12l16-8-6 16-3-7-7-1Z"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+  let ctx;
+  function ding(){try{ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();const n=ctx.currentTime;[880,1175].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=f;const t=n+i*.12;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.25,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.28);o.connect(g).connect(ctx.destination);o.start(t);o.stop(t+.3)})}catch(e){}}
+  const input=document.getElementById('input');
+  input.addEventListener('input',()=>{input.style.height='auto';input.style.height=Math.min(input.scrollHeight,140)+'px'});
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
+  document.getElementById('send').addEventListener('click',send);
+  function send(){const v=input.value.trim();if(!v)return;const m=document.createElement('div');m.className='msg';m.innerHTML=`<div class="ava user">YO</div><div class="msg-body"><div class="msg-name">You <span>just now</span></div><div class="msg-text">${v.replace(/</g,'&lt;')}</div></div>`;document.getElementById('inner').appendChild(m);input.value='';input.style.height='auto';document.getElementById('chat').scrollTo({top:1e9,behavior:'smooth'})}
+  document.getElementById('ref-file').addEventListener('click',()=>{const r=document.getElementById('refs');const t=document.createElement('span');t.className='cref';t.innerHTML=`src/components/Login.tsx<button title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`;t.querySelector('button').addEventListener('click',()=>t.remove());r.appendChild(t)});
+  document.querySelectorAll('.cref button').forEach(b=>b.addEventListener('click',()=>b.closest('.cref').remove()));
+  function toast(){ding();const w=document.getElementById('toasts');const el=document.createElement('div');el.className='toast';el.innerHTML=`<div class="tt-top"><svg class="tt-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> Agent needs help</div><p><b>Fix flaky upload test</b> is waiting on your review in <b>local only</b>.</p><div class="tt-actions"><button class="tt-btn go" data-d>Review now</button><button class="tt-btn" data-x>Later</button></div>`;w.appendChild(el);el.querySelector('[data-x]').addEventListener('click',()=>el.remove());el.querySelector('[data-d]').addEventListener('click',()=>el.remove());setTimeout(()=>{if(el.parentNode)el.remove()},12000)}
+  setTimeout(toast,2600);
+</script>
+</body>
+</html>

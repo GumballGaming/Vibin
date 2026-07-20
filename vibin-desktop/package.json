@@ -1,0 +1,13 @@
+{
+  "name": "vibin-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev:fe": "vite",
+    "build:fe": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
