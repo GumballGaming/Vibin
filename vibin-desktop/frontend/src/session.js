@@ -3,6 +3,7 @@ const WS_URL = `${wsBase}/ws`;
 
 let socket = null;
 let started = false;
+let connecting = null;
 const handlers = [];
 
 const DEFAULT_WORKSPACE = "C:\\Users\\spoil\\OneDrive\\Desktop\\Vibin";
@@ -16,24 +17,40 @@ export function getVibinSrc() {
 }
 
 function ensureConnected() {
-  if (socket) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    socket = new WebSocket(WS_URL);
-    socket.onopen = () => resolve();
-    socket.onerror = (e) => reject(e);
-    socket.onclose = () => {
-      socket = null;
+  if (socket && socket.readyState === WebSocket.OPEN) return Promise.resolve();
+  if (connecting) return connecting;
+  connecting = new Promise((resolve, reject) => {
+    const next = new WebSocket(WS_URL);
+    socket = next;
+    next.onopen = () => {
+      connecting = null;
+      resolve();
     };
-    socket.onmessage = (ev) => {
+    next.onerror = (e) => {
+      connecting = null;
+      if (socket === next) socket = null;
+      reject(e);
+    };
+    next.onclose = () => {
+      connecting = null;
+      started = false;
+      if (socket === next) socket = null;
+    };
+    next.onmessage = (ev) => {
       handlers.forEach((h) => h(ev.data));
     };
   });
+  return connecting;
 }
 
 export async function ensureStarted() {
   await ensureConnected();
+  const activeSocket = socket;
+  if (!activeSocket || activeSocket.readyState !== WebSocket.OPEN) {
+    throw new Error("The chat connection closed. Please try sending again.");
+  }
   if (!started) {
-    socket.send(
+    activeSocket.send(
       JSON.stringify({ type: "start", workspace: getWorkspace(), vibinSrc: getVibinSrc() })
     );
     started = true;
@@ -42,17 +59,19 @@ export async function ensureStarted() {
 
 export async function sendPrompt(prompt) {
   await ensureStarted();
+  if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error("The chat connection closed. Please try sending again.");
   socket.send(JSON.stringify({ type: "prompt", text: prompt }));
 }
 
 export async function sendApproval(id, decision) {
   await ensureStarted();
+  if (!socket || socket.readyState !== WebSocket.OPEN) throw new Error("The chat connection closed. Please try again.");
   socket.send(JSON.stringify({ type: "approve", id, decision }));
 }
 
 export async function stopSession() {
   if (!socket) return;
-  socket.send(JSON.stringify({ type: "stop" }));
+  if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "stop" }));
   socket.close();
   socket = null;
   started = false;

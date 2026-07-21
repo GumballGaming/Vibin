@@ -17,6 +17,7 @@ use std::collections::HashMap;
 use std::thread;
 use std::time::Duration;
 use tower_http::services::ServeDir;
+use base64::Engine;
 use wry::{
     application::{event_loop::EventLoop, window::WindowBuilder, dpi::LogicalSize},
     webview::WebViewBuilder,
@@ -311,6 +312,67 @@ async fn api_config() -> impl IntoResponse {
     }))
 }
 
+fn find_workspace() -> PathBuf {
+    let vibin_src = find_vibin_src().unwrap_or_default();
+    vibin_src
+        .parent()
+        .and_then(|srcdir| srcdir.parent())
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+async fn api_models() -> impl IntoResponse {
+    let vibin_src = find_vibin_src().unwrap_or_default();
+    let out = tokio::task::spawn_blocking(move || {
+        std::process::Command::new("bun")
+            .arg("run")
+            .arg(&vibin_src)
+            .arg("--models")
+            .output()
+    })
+    .await;
+    if let Ok(Ok(out)) = out {
+        let text = String::from_utf8_lossy(&out.stdout);
+        if let Some(line) = text.lines().find(|l| l.trim_start().starts_with('{')) {
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
+                let models = value.get("models").cloned().unwrap_or(json!([]));
+                let active = value.get("model").cloned();
+                return Json(json!({ "ok": true, "models": models, "activeModel": active })).into_response();
+            }
+        }
+    }
+    Json(json!({ "ok": true, "models": [] })).into_response()
+}
+
+#[derive(serde::Deserialize)]
+struct UploadBody {
+    name: String,
+    #[serde(default)]
+    data: String,
+}
+
+async fn api_upload(Json(body): Json<UploadBody>) -> impl IntoResponse {
+    let name = std::path::Path::new(&body.name)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "upload.bin".into());
+    let decoded = match base64::engine::general_purpose::STANDARD.decode(body.data.trim()) {
+        Ok(d) => d,
+        Err(e) => return Json(json!({ "ok": false, "message": e.to_string() })).into_response(),
+    };
+    let ws = find_workspace();
+    let dir = ws.join("uploads");
+    if let Err(e) = tokio::fs::create_dir_all(&dir).await {
+        return Json(json!({ "ok": false, "message": e.to_string() })).into_response();
+    }
+    let dest = dir.join(&name);
+    match tokio::fs::write(&dest, decoded).await {
+        Ok(_) => Json(json!({ "ok": true, "path": format!("uploads/{}", name) })).into_response(),
+        Err(e) => Json(json!({ "ok": false, "message": e.to_string() })).into_response(),
+    }
+}
+
 async fn api_files(Query(q): Query<HashMap<String, String>>) -> impl IntoResponse {
     let root = match q.get("root") {
         Some(r) if !r.trim().is_empty() => PathBuf::from(r),
@@ -360,6 +422,8 @@ fn app_router() -> Router {
         .route("/api/files", get(api_files))
         .route("/api/git", get(api_git))
         .route("/api/commit", post(api_commit))
+        .route("/api/models", get(api_models))
+        .route("/api/upload", post(api_upload))
         .route("/ws", get(ws_handler))
         .route("/", get(|| async { Redirect::permanent("/app.html") }))
         .fallback_service(ServeDir::new(dist))

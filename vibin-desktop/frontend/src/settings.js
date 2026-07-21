@@ -1,22 +1,32 @@
 import { applyTheme, getTheme, themes } from "./theme.js";
 
-const grid = document.getElementById("theme-grid");
-
-function render() {
+function renderThemes(grid) {
   const active = getTheme();
-  grid.innerHTML = Object.entries(themes).map(([id, theme]) => `
+  grid.innerHTML = Object.entries(themes)
+    .map(
+      ([id, theme]) => `
     <button class="theme-card${id === active ? " active" : ""}" data-theme="${id}" aria-pressed="${id === active}">
-      <span class="preview">${theme.colors.map((color) => `<i style="background:${color}"></i>`).join("")}</span>
+      <span class="preview" style="background:linear-gradient(135deg, ${theme.colors[0]}, ${theme.colors[2]})"></span>
       <span class="copy"><strong>${theme.name}</strong><small>${theme.description}</small></span>
       <span class="check">✓</span>
-    </button>`).join("");
+    </button>`
+    )
+    .join("");
+
+  grid.addEventListener("click", (event) => {
+    const card = event.target.closest(".theme-card");
+    if (!card) return;
+    applyTheme(card.dataset.theme);
+    renderThemes(grid);
+  });
 }
 
-grid.addEventListener("click", (event) => {
-  const card = event.target.closest(".theme-card");
-  if (!card) return;
-  applyTheme(card.dataset.theme);
-  render();
-});
+export function initSettings(root) {
+  const grid = root.querySelector("#theme-grid");
+  if (grid) renderThemes(grid);
+}
 
-render();
+if (typeof document !== "undefined") {
+  const root = document.getElementById("settings-root");
+  if (root) initSettings(root);
+}

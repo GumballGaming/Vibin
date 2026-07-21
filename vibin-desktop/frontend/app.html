@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0" rel="stylesheet">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Vibe-In · Desktop</title>
 <style>
@@ -29,8 +32,8 @@
     --radius-md: 22px;
     --radius-lg: 34px;
     --radius-pill: 9999px;
-    --elev-raised: 8px 10px 24px rgba(128, 92, 70, 0.18), -8px -8px 20px rgba(255, 255, 255, 0.70);
-    --focus-ring: 0 0 0 4px rgba(180, 106, 70, 0.24);
+    --elev-raised: 0 3px 10px rgba(0, 0, 0, 0.16);
+    --focus-ring: none;
     --ease: cubic-bezier(0.2, 0, 0, 1);
   }
 
@@ -49,6 +52,24 @@
   button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
   svg { display: block; }
   ::selection { background: color-mix(in oklab, var(--accent), transparent 75%); }
+
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal; font-style: normal; line-height: 1;
+    letter-spacing: normal; text-transform: none; display: inline-block;
+    white-space: nowrap; word-wrap: normal; direction: ltr;
+    -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased;
+    vertical-align: middle; user-select: none;
+  }
+  .rail-btn .material-symbols-outlined { font-size: 22px; }
+  .collapse-btn .material-symbols-outlined { font-size: 18px; }
+  .head-btn .material-symbols-outlined { font-size: 16px; }
+  .session-title-btn .material-symbols-outlined { font-size: 13px; }
+  .new-task .material-symbols-outlined { font-size: 18px; }
+  .ctool .material-symbols-outlined { font-size: 19px; }
+  .send-btn .material-symbols-outlined { font-size: 18px; }
+  .drawer-close .material-symbols-outlined { font-size: 18px; }
+  .git-badge .material-symbols-outlined { font-size: 14px; }
 
   /* ─── App shell ─────────────────────────────────────────────── */
   .app {
@@ -89,9 +110,13 @@
     transition: background 150ms var(--ease), color 150ms var(--ease), transform 150ms var(--ease);
   }
   .rail-btn svg { width: 22px; height: 22px; }
-  .rail-btn:hover { background: color-mix(in oklab, var(--accent), transparent 86%); color: var(--accent); }
+  .iconrail .rail-btn,
+  .iconrail .rail-btn:hover,
+  .iconrail .rail-btn[aria-pressed="true"] { background: transparent !important; box-shadow: none !important; }
+  .iconrail .rail-logo { box-shadow: none !important; }
+  .rail-btn:hover { background: rgba(180, 106, 70, .14); color: var(--accent); }
   .rail-btn:active { transform: translateY(1px); }
-  .rail-btn[aria-pressed="true"] { background: color-mix(in oklab, var(--accent), transparent 78%); color: var(--accent); }
+  .rail-btn[aria-pressed="true"] { background: rgba(180, 106, 70, .2); color: var(--accent); }
   .rail-btn .tip {
     position: absolute; left: 54px; top: 50%; transform: translateY(-50%);
     background: var(--fg); color: var(--surface);
@@ -124,6 +149,7 @@
   .collapse-btn svg { width: 18px; height: 18px; }
 
   .rail-tabs { display: flex; gap: 4px; padding: 10px 12px 0; }
+  .rail-tabs, #chat-list { display: none !important; }
   .rail-tab {
     flex: 1; padding: 8px 10px; border-radius: 11px 11px 0 0;
     font-size: 13px; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -137,6 +163,10 @@
   .rail-scroll { flex: 1; overflow-y: auto; padding: 10px 12px 16px; }
   .rail-scroll::-webkit-scrollbar { width: 8px; }
   .rail-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+  .model-switch { margin: 0 12px 14px; padding-top: 12px; border-top: 1px solid var(--border-soft); }
+  .model-switch label { display: block; margin: 0 0 6px 2px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .model-switch select { width: 100%; appearance: none; padding: 9px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--fg); font: inherit; font-size: 13px; }
+  .model-switch select:focus { outline: 1px solid var(--accent); }
 
   /* task card */
   .task {
@@ -159,6 +189,7 @@
   .status-done { background: var(--success); }
   .status-help { background: var(--danger); }
   @keyframes pulse { 0%,100%{ opacity: 1; box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent), transparent 60%); } 50%{ opacity: .65; box-shadow: 0 0 0 5px color-mix(in oklab, var(--accent), transparent 88%); } }
+  .status-running { animation: none; }
 
   /* git mode badge */
   .git-badge {
@@ -191,6 +222,9 @@
 
   /* ─── Main panel ────────────────────────────────────────────── */
   .main { display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
+  .iconrail { background: var(--surface-warm); }
+  ::selection, .task.active, .composer-box:focus-within, .session-title-input, .input:focus, .textarea:focus { box-shadow: none !important; }
+  .task.active { background: var(--surface); }
   .main-head {
     display: flex; align-items: center; gap: 12px;
     padding: 14px 22px; border-bottom: 1px solid var(--border-soft);
@@ -257,7 +291,7 @@
 
    /* agent typing indicator in chat */
    .typing { display: inline-flex; align-items: center; gap: 5px; margin: 4px 0 22px; }
-   .typing .ava { width: 32px; height: 32px; }
+   .typing .ava { width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center; font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
    .typing .bubble { display: inline-flex; gap: 4px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 14px; padding: 11px 14px; }
    .typing .bubble span { width: 7px; height: 7px; border-radius: 99px; background: var(--accent); opacity: .4; animation: blink 1.3s infinite; }
    .typing .bubble span:nth-child(2){ animation-delay: .2s; }
@@ -331,6 +365,12 @@
   .drawer-close:hover { background: var(--bg); color: var(--fg); }
   .drawer-close svg { width: 18px; height: 18px; }
 
+  /* settings overlay (in-app, no separate instance) */
+  .settings-overlay { position: fixed; inset: 0; background: rgba(43,33,28,0.32); opacity: 0; pointer-events: none; transition: opacity 200ms; z-index: 90; display: flex; justify-content: flex-end; }
+  .settings-overlay.open { opacity: 1; pointer-events: auto; }
+  .settings-panel { width: 540px; max-width: 95vw; height: 100vh; background: var(--surface); box-shadow: -10px 0 40px rgba(128,92,70,0.22); display: flex; flex-direction: column; overflow: hidden; }
+  .settings-body { flex: 1; overflow-y: auto; padding: 24px 28px 32px; }
+
   /* file tree */
   .ftree { font-size: 14px; }
   .ftree .fnode { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 9px; cursor: default; }
@@ -396,24 +436,24 @@
   <aside class="iconrail">
     <div class="rail-logo">V</div>
     <button class="rail-btn" data-toggle="chatrail" aria-pressed="true" title="Chat">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 12a8 8 0 0 1-11.3 7.3L4 20l1-4.7A8 8 0 1 1 21 12Z"/></svg>
+      <span class="material-symbols-outlined">chat</span>
       <span class="tip">Chat &amp; tasks</span>
     </button>
     <button class="rail-btn" id="open-files" title="Files">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/></svg>
+      <span class="material-symbols-outlined">folder</span>
       <span class="tip">Files</span>
     </button>
     <button class="rail-btn" id="open-commit" title="Commit">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 4v5M12 15v5M4.9 12a7 7 0 0 1 0 0M19.1 12a7 7 0 0 1 0 0"/></svg>
+      <span class="material-symbols-outlined">commit</span>
       <span class="tip">Commit changes</span>
     </button>
     <button class="rail-btn" id="open-pr" title="Open PR">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="9" r="2.4"/><path d="M6 8.4v7.2M8.4 6.6c5 0 6 1.6 6 4.4"/></svg>
+      <span class="material-symbols-outlined">merge</span>
       <span class="tip">Open pull request</span>
     </button>
     <div class="rail-spacer"></div>
     <button class="rail-btn" id="open-settings" title="Settings" aria-label="Open settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14.1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 4.6h.1A1.6 1.6 0 0 0 12 3a2 2 0 1 1 4 0v.1A1.6 1.6 0 0 0 19 4.6Z"/></svg>
+      <span class="material-symbols-outlined">settings</span>
       <span class="tip">Settings</span>
     </button>
   </aside>
@@ -423,49 +463,39 @@
     <div class="rail-head">
       <h2>Tasks</h2>
       <button class="collapse-btn" id="collapse-rail" title="Collapse">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 5l-7 7 7 7M19 5l-7 7 7 7"/></svg>
+        <span class="material-symbols-outlined">chevron_left</span>
       </button>
-    </div>
-    <div class="rail-tabs" role="tablist">
-      <button class="rail-tab" data-tab="tasks" aria-selected="true">Tasks</button>
-      <button class="rail-tab" data-tab="chats" aria-selected="false">Chats</button>
     </div>
     <div class="rail-scroll">
       <div id="task-list"></div>
 
       <button class="new-task" id="new-task">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
-        New chat
+        <span class="material-symbols-outlined">add</span>
+        New task
       </button>
-
-      <div id="chat-list" hidden>
-        <div class="task active" data-chat="c1">
-          <div class="task-top">
-            <span class="status-dot status-running" title="Active"></span>
-            <span class="task-title">Current session</span>
-          </div>
-          <div class="task-msg">Live conversation with the Vibe agent.</div>
-        </div>
-      </div>
+    </div>
+    <div class="model-switch">
+      <label for="model-select">Model</label>
+      <select id="model-select">
+        <option value="gpt-5.3-codex">GPT-5.3 Codex</option>
+        <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+        <option value="claude-sonnet-4-20250514">Claude Sonnet</option>
+      </select>
     </div>
   </aside>
 
   <!-- Main panel -->
   <section class="main">
     <div class="main-head">
-      <button class="head-btn" id="head-files">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/></svg>
-        Files
-      </button>
-      <span class="crumb">Vibe-In / <button class="session-title-btn" id="rename-session" title="Rename session"><b id="crumb-task">New chat</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button></span>
+      <span class="crumb">Vibe-In / <button class="session-title-btn" id="rename-session" title="Rename session"><b id="crumb-task">New task</b><span class="material-symbols-outlined">edit</span></button></span>
       <span class="spacer"></span>
       <span class="git-badge local" id="head-git">local only</span>
       <button class="head-btn" id="head-commit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 4v5M12 15v5"/></svg>
+        <span class="material-symbols-outlined">commit</span>
         Commit
       </button>
       <button class="head-btn primary" id="head-pr">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="6" cy="6" r="2.4"/><circle cx="6" cy="18" r="2.4"/><circle cx="18" cy="9" r="2.4"/><path d="M6 8.4v7.2M8.4 6.6c5 0 6 1.6 6 4.4"/></svg>
+        <span class="material-symbols-outlined">merge</span>
         Open PR
       </button>
     </div>
@@ -487,17 +517,14 @@
           <div class="composer-refs" id="composer-refs"></div>
           <div class="composer-row">
             <textarea id="composer-input" rows="1" placeholder="Message the agent…  use @ to reference a file"></textarea>
-            <div class="composer-tools">
-              <button class="ctool" id="ref-file" title="Reference a file">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/></svg>
-              </button>
-              <button class="ctool" title="Attach">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 11l-8.5 8.5a4 4 0 0 1-5.7-5.7L15 5.3a2.5 2.5 0 0 1 3.5 3.5L9.8 17.5"/></svg>
-              </button>
-              <button class="send-btn" id="send-btn" title="Send">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 12l16-8-6 16-3-7-7-1Z"/></svg>
-              </button>
-            </div>
+             <div class="composer-tools">
+               <button class="ctool" id="attach-file" title="Attach a file">
+                 <span class="material-symbols-outlined">attach_file</span>
+               </button>
+               <button class="send-btn" id="send-btn" title="Send">
+                 <span class="material-symbols-outlined">send</span>
+               </button>
+             </div>
           </div>
         </div>
       </div>
@@ -508,12 +535,20 @@
 <!-- Help toast -->
 <div class="toast-wrap" id="toast-wrap"></div>
 
+<!-- Hidden file input for image / file upload -->
+<input type="file" id="photo-input" accept="image/*" multiple hidden />
+
+<!-- Settings overlay -->
+<div class="settings-overlay" id="settings-overlay">
+  <div class="settings-panel" id="settings-panel"></div>
+</div>
+
 <!-- Drawer -->
 <div class="scrim" id="scrim"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-head">
     <h3 id="drawer-title">Files</h3>
-    <button class="drawer-close" id="drawer-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <button class="drawer-close" id="drawer-close"><span class="material-symbols-outlined">close</span></button>
   </div>
   <div class="drawer-body" id="drawer-body"></div>
 </div>

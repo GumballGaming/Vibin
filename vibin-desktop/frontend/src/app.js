@@ -6,7 +6,6 @@ function escapeHtml(s) {
   );
 }
 
-// ── API helpers ──────────────────────────────────────────────
 async function apiGet(path) {
   try {
     const r = await fetch(path);
@@ -39,37 +38,6 @@ async function loadConfig() {
   if (!localStorage.getItem("vibin.vibinSrc")) localStorage.setItem("vibin.vibinSrc", cfg.vibinSrc);
   WORKSPACE = localStorage.getItem("vibin.workspace") || cfg.workspace;
   VIBIN_SRC = localStorage.getItem("vibin.vibinSrc") || cfg.vibinSrc;
-}
-
-// ── Per-project session persistence ───────────────────────────
-function sessionKey() {
-  return "vibin.session." + btoa(unescape(encodeURIComponent(WORKSPACE)));
-}
-function saveSession() {
-  try {
-    const clone = chatInner.cloneNode(true);
-    const es = clone.querySelector("#empty-state");
-    if (es) es.remove();
-    const typing = clone.querySelector(".typing");
-    if (typing) typing.remove();
-    if (!clone.querySelector(".msg, .agent-callout, .run")) {
-      localStorage.removeItem(sessionKey());
-      return;
-    }
-    localStorage.setItem(sessionKey(), clone.innerHTML);
-  } catch {}
-}
-function loadSession() {
-  try {
-    const html = localStorage.getItem(sessionKey());
-    if (html && html.trim()) {
-      chatInner.innerHTML = html;
-      const t = chatInner.querySelector(".typing");
-      if (t) t.remove();
-      return true;
-    }
-  } catch {}
-  return false;
 }
 
 // ── Audio (ding) ─────────────────────────────────────────────
@@ -108,46 +76,82 @@ document.getElementById("collapse-rail").addEventListener("click", () => {
   if (window.innerWidth <= 920) app.classList.toggle("rail-open", !collapsed);
 });
 
-// ── Rail tabs (Tasks / Chats) ────────────────────────────────
-const tabTasks = document.querySelector('.rail-tab[data-tab="tasks"]');
-const tabChats = document.querySelector('.rail-tab[data-tab="chats"]');
+// Disable the native (inspect / reload) context menu app-wide.
+document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+const composerRefs = document.getElementById("composer-refs");
+
+// ── Rail (tasks) ─────────────────────────────────────────────
 const taskListView = document.getElementById("task-list");
-const chatListView = document.getElementById("chat-list");
 const chatPanel = document.querySelector(".main");
 let sessionTitle = document.getElementById("crumb-task");
 const renameSessionButton = document.getElementById("rename-session");
 
+// ── Multi-task state ─────────────────────────────────────────
+let tasks = [];
+let activeId = null;
+const TASKS_KEY = "vibin.tasks";
+
+function loadTasks() {
+  try {
+    const raw = localStorage.getItem(TASKS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) {
+        tasks = parsed;
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+function saveTasks() {
+  try {
+    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  } catch {}
+}
+function getActive() {
+  return tasks.find((t) => t.id === activeId) || null;
+}
+function persistActiveChat() {
+  const t = getActive();
+  if (!t) return;
+  const clone = chatInner.cloneNode(true);
+  const es = clone.querySelector("#empty-state");
+  if (es) es.remove();
+  const typing = clone.querySelector(".typing");
+  if (typing) typing.remove();
+  t.chatHtml = clone.innerHTML;
+}
+
+function statusClass(kind) {
+  return kind === "running" ? "status-running" : kind === "done" ? "status-done" : "status-help";
+}
+
 function currentSessionName() {
-  return localStorage.getItem("vibin.sessionName") || "Current session";
+  const t = getActive();
+  return t ? t.name : "New task";
 }
 
 function setSessionName(name) {
-  const next = name.trim() || "Current session";
-  localStorage.setItem("vibin.sessionName", next);
+  const next = name.trim() || "New task";
+  const t = getActive();
+  if (t) {
+    t.name = next;
+    if (liveTask) {
+      const lt = liveTask.querySelector(".task-title");
+      if (lt) lt.textContent = next;
+    }
+  }
   sessionTitle.textContent = next;
-  document.querySelectorAll('[data-chat="c1"] .task-title, #task-list .task-title').forEach((title) => {
-    title.textContent = next;
-  });
+  saveTasks();
 }
 
 function openCurrentSession() {
   chatPanel.hidden = false;
   app.classList.remove("rail-collapsed");
-  document.querySelectorAll(".task").forEach((item) => item.classList.remove("active"));
-  document.querySelectorAll('[data-chat="c1"], #task-list .task').forEach((item) => item.classList.add("active"));
-  setSessionName(currentSessionName());
   document.getElementById("composer-input").focus();
 }
-
-function selectTab(name) {
-  tabTasks.setAttribute("aria-selected", name === "tasks");
-  tabChats.setAttribute("aria-selected", name === "chats");
-  taskListView.hidden = name !== "tasks";
-  chatListView.hidden = name !== "chats";
-}
-tabTasks.addEventListener("click", () => selectTab("tasks"));
-tabChats.addEventListener("click", () => selectTab("chats"));
-chatListView.querySelector('[data-chat="c1"]').addEventListener("click", openCurrentSession);
 
 renameSessionButton.addEventListener("click", () => {
   if (renameSessionButton.querySelector("input")) return;
@@ -159,7 +163,7 @@ renameSessionButton.addEventListener("click", () => {
   input.select();
   const finish = () => {
     setSessionName(input.value);
-    renameSessionButton.innerHTML = `<b id="crumb-task">${escapeHtml(currentSessionName())}</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>`;
+    renameSessionButton.innerHTML = `<b id="crumb-task">${escapeHtml(currentSessionName())}</b><span class="material-symbols-outlined">edit</span>`;
     sessionTitle = document.getElementById("crumb-task");
   };
   input.addEventListener("blur", finish, { once: true });
@@ -170,34 +174,113 @@ renameSessionButton.addEventListener("click", () => {
 });
 
 // ── Live task (derived from session events) ───────────────────
-let liveTask, liveTaskMsg, liveTaskGit;
-function buildLiveTask() {
-  const list = document.getElementById("task-list");
-  list.innerHTML = "";
-  liveTask = document.createElement("div");
-  liveTask.className = "task active";
-  liveTask.innerHTML = `
-    <div class="task-top">
-      <span class="status-dot status-running" title="Idle"></span>
-      <span class="task-title">Current session</span>
-    </div>
-    <div class="task-msg">Waiting for your first message…</div>
-    <div class="task-foot">
-      <span class="git-badge local" id="live-git">local only</span>
-    </div>`;
-  list.appendChild(liveTask);
-  liveTaskMsg = liveTask.querySelector(".task-msg");
-  liveTaskGit = liveTask.querySelector("#live-git");
-  liveTask.addEventListener("click", () => {
-    openCurrentSession();
-  });
-  setSessionName(currentSessionName());
+let liveTask, liveTaskGit;
+function bindLiveTask() {
+  liveTask = taskListView.querySelector(`.task[data-id="${activeId}"]`);
+  liveTaskGit = liveTask ? liveTask.querySelector(".git-badge") : null;
 }
+
+function makeTaskCard(task) {
+  const el = document.createElement("div");
+  el.className = "task" + (task.id === activeId ? " active" : "");
+  el.dataset.id = task.id;
+  el.innerHTML = `
+    <div class="task-top">
+      <span class="status-dot ${statusClass(task.status || "running")}"></span>
+      <span class="task-title">${escapeHtml(task.name)}</span>
+    </div>
+    <div class="task-msg">${escapeHtml(task.msg || "Waiting for your first message…")}</div>
+    <div class="task-foot">
+      <span class="git-badge ${gitClass(task.git)}">${gitBadgeInner(task.git)}</span>
+    </div>`;
+  el.addEventListener("click", () => activateTask(task.id));
+  el.addEventListener("contextmenu", async (e) => {
+    e.preventDefault();
+    if (await confirmDialog(`Delete task "${task.name}"? This cannot be undone.`)) deleteTask(task.id);
+  });
+  return el;
+}
+
+function confirmDialog(message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style.cssText =
+      "position:fixed;inset:0;background:rgba(43,33,28,.35);display:grid;place-items:center;z-index:95";
+    const card = document.createElement("div");
+    card.style.cssText =
+      "background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px 22px;max-width:380px;box-shadow:var(--elev-raised)";
+    card.innerHTML = `<div style="font-weight:600;margin-bottom:8px">Delete task</div><p style="margin:0 0 16px;color:var(--fg-2);white-space:pre-wrap">${escapeHtml(
+      message
+    )}</p>`;
+    const actions = document.createElement("div");
+    actions.style.cssText = "display:flex;gap:8px;justify-content:flex-end";
+    const cancel = document.createElement("button");
+    cancel.textContent = "Cancel";
+    cancel.style.cssText =
+      "padding:8px 14px;border-radius:10px;font-size:13px;font-weight:500;border:1px solid var(--border);cursor:pointer;color:var(--fg-2);background:transparent";
+    const del = document.createElement("button");
+    del.textContent = "Delete";
+    del.style.cssText =
+      "padding:8px 14px;border-radius:10px;font-size:13px;font-weight:500;border:1px solid var(--danger);cursor:pointer;color:var(--danger);background:transparent";
+    cancel.addEventListener("click", () => {
+      overlay.remove();
+      resolve(false);
+    });
+    del.addEventListener("click", () => {
+      overlay.remove();
+      resolve(true);
+    });
+    actions.append(cancel, del);
+    card.appendChild(actions);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+  });
+}
+
+function deleteTask(id) {
+  const idx = tasks.findIndex((t) => t.id === id);
+  if (idx === -1) return;
+  tasks.splice(idx, 1);
+  if (activeId === id) {
+    if (tasks.length === 0) {
+      tasks.push({
+        id: "task-initial",
+        name: "New task",
+        status: "running",
+        git: null,
+        msg: "Waiting for your first message…",
+        chatHtml: "",
+      });
+    }
+    activeId = tasks[tasks.length - 1].id;
+    const t = getActive();
+    chatInner.innerHTML = t.chatHtml && t.chatHtml.trim() ? t.chatHtml : "";
+    assistantBody = null;
+    typingEl = null;
+    if (!chatInner.querySelector(".msg, .agent-callout, .run")) showEmptyState();
+    sessionTitle.textContent = t.name;
+  }
+  renderTasks();
+  bindLiveTask();
+  saveTasks();
+}
+
+function renderTasks() {
+  taskListView.innerHTML = "";
+  tasks.forEach((t) => taskListView.appendChild(makeTaskCard(t)));
+}
+
 function setLiveStatus(kind, msg) {
+  const t = getActive();
+  if (t) {
+    t.status = kind === "running" ? "running" : kind === "done" ? "done" : "help";
+    if (msg) t.msg = msg;
+  }
+  if (!liveTask) return;
   const dot = liveTask.querySelector(".status-dot");
-  dot.className =
-    "status-dot " + (kind === "running" ? "status-running" : kind === "done" ? "status-done" : "status-help");
-  if (msg) liveTaskMsg.textContent = msg;
+  dot.className = "status-dot " + statusClass(kind);
+  if (msg) liveTask.querySelector(".task-msg").textContent = msg;
+  saveTasks();
 }
 
 // ── Git badge ────────────────────────────────────────────────
@@ -207,22 +290,29 @@ function gitClass(branch) {
   if (!b) return "local";
   return "worktree";
 }
-function setGitBadge(el, branch) {
+function gitIcon(cls) {
+  return cls === "master" ? "commit" : cls === "local" ? "computer" : "account_tree";
+}
+function gitBadgeInner(branch) {
   const cls = gitClass(branch);
-  el.className = "git-badge " + cls;
-  const icon =
-    cls === "master"
-      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V4M5 4L3 6M5 4l2 2M19 3l-6 6M19 3v6"/></svg>'
-      : cls === "local"
-      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h16"/></svg>'
-      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 8.4v7.2M8.4 6.6c5 0 6 1.6 6 4.4"/></svg>';
-  el.innerHTML = icon + " " + (branch || "no branch");
+  return `<span class="material-symbols-outlined">${gitIcon(cls)}</span> ` + escapeHtml(branch || "no branch");
+}
+function setGitBadge(el, branch) {
+  el.className = "git-badge " + gitClass(branch);
+  el.innerHTML = gitBadgeInner(branch);
 }
 async function refreshGit() {
   const g = await apiGet("/api/git?root=" + encodeURIComponent(WORKSPACE));
   if (!g) return;
   setGitBadge(document.getElementById("head-git"), g.branch);
-  if (liveTaskGit) setGitBadge(liveTaskGit, g.branch);
+  if (liveTaskGit) {
+    setGitBadge(liveTaskGit, g.branch);
+    const t = getActive();
+    if (t) {
+      t.git = g.branch;
+      saveTasks();
+    }
+  }
   return g;
 }
 
@@ -243,6 +333,87 @@ function closeDrawer() {
 }
 scrim.addEventListener("click", closeDrawer);
 document.getElementById("drawer-close").addEventListener("click", closeDrawer);
+
+// ── Image / file upload ─────────────────────────────────────
+const photoInput = document.getElementById("photo-input");
+
+function readAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+
+function openUpload() {
+  photoInput.click();
+}
+
+async function handleUpload(files) {
+  for (const file of files) {
+    let path = "uploads/" + file.name;
+    try {
+      const dataUrl = await readAsDataURL(file);
+      const base64 = String(dataUrl).split(",")[1] || "";
+      const r = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, data: base64 }),
+      });
+      const j = await r.json();
+      if (j.ok && j.path) path = j.path;
+    } catch (e) {}
+    addComposerRef(path);
+  }
+  openCurrentSession();
+}
+
+photoInput.addEventListener("change", () => {
+  if (photoInput.files && photoInput.files.length) handleUpload(photoInput.files);
+  photoInput.value = "";
+});
+
+// ── Settings (in-app overlay, no separate instance) ─────────
+function openSettings() {
+  const overlay = document.getElementById("settings-overlay");
+  const panel = document.getElementById("settings-panel");
+  panel.innerHTML =
+    '<div class="drawer-head"><h3>Settings</h3><button class="drawer-close" id="settings-close"><span class="material-symbols-outlined">close</span></button></div><div class="settings-body" id="settings-body">Loading…</div>';
+  document.getElementById("settings-close").addEventListener("click", closeSettings);
+  overlay.classList.add("open");
+  fetch("settings.html")
+    .then((r) => r.text())
+    .then((html) => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const style = doc.querySelector("style");
+      if (style) {
+        const s = document.createElement("style");
+        s.textContent = style.textContent;
+        panel.appendChild(s);
+      }
+      const content = doc.querySelector(".content") || doc.body;
+      const body = document.getElementById("settings-body");
+      body.innerHTML = "";
+      body.appendChild(document.importNode(content, true));
+      import("./settings.js")
+        .then((m) => m.initSettings(body))
+        .catch((e) => {
+          body.innerHTML = "Failed to load settings: " + e;
+        });
+    })
+    .catch(() => {
+      document.getElementById("settings-body").textContent = "Failed to load settings.";
+    });
+}
+
+function closeSettings() {
+  document.getElementById("settings-overlay").classList.remove("open");
+}
+
+document.getElementById("settings-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "settings-overlay") closeSettings();
+});
 
 function langSvg(cls, label) {
   return `<svg class="ficon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><text x="12" y="16" font-size="9" font-family="monospace" text-anchor="middle" fill="currentColor" stroke="none">${label}</text></svg>`;
@@ -274,7 +445,8 @@ function addComposerRef(path) {
   const refs = document.getElementById("composer-refs");
   const tag = document.createElement("span");
   tag.className = "composer-ref";
-  tag.innerHTML = `${escapeHtml(path)}<button title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`;
+  tag.dataset.path = path;
+  tag.innerHTML = `${escapeHtml(path)}<button title="Remove"><span class="material-symbols-outlined">close</span></button>`;
   tag.querySelector("button").addEventListener("click", () => tag.remove());
   refs.appendChild(tag);
 }
@@ -343,14 +515,12 @@ async function openPr() {
 }
 
 document.getElementById("open-files").addEventListener("click", openFiles);
-document.getElementById("head-files").addEventListener("click", openFiles);
 document.getElementById("open-commit").addEventListener("click", openCommit);
 document.getElementById("head-commit").addEventListener("click", openCommit);
 document.getElementById("open-pr").addEventListener("click", openPr);
 document.getElementById("head-pr").addEventListener("click", openPr);
-document.getElementById("open-settings").addEventListener("click", () => {
-  window.location.href = "settings.html";
-});
+document.getElementById("open-settings").addEventListener("click", openSettings);
+document.getElementById("attach-file").addEventListener("click", openUpload);
 
 // ── Live chat ────────────────────────────────────────────────
 const chatScroll = document.getElementById("chat-scroll");
@@ -374,6 +544,7 @@ function showEmptyState() {
 }
 
 function addUserMessage(text) {
+  setSessionName(text.trim().replace(/\s+/g, " ").slice(0, 42) || "New task");
   clearEmpty();
   const m = document.createElement("div");
   m.className = "msg";
@@ -511,27 +682,75 @@ function renderEvent(line) {
   saveSession();
 }
 
+function saveSession() {
+  persistActiveChat();
+  saveTasks();
+}
+
 function doSend() {
   const v = input.value.trim();
-  if (!v) return;
-  addUserMessage(v);
+  const refs = [...composerRefs.querySelectorAll(".composer-ref")].map(
+    (r) => r.dataset.path || r.textContent.trim()
+  );
+  if (!v && refs.length === 0) return;
+  let full = v;
+  if (refs.length) {
+    full += "\n\nReferenced files:\n" + refs.map((p) => "- " + p).join("\n");
+  }
+  addUserMessage(v || "(attached files)");
   input.value = "";
   input.style.height = "auto";
+  composerRefs.innerHTML = "";
   setLiveStatus("running", "Agent is working…");
-  session.sendPrompt(v).catch((e) => appendSystem(String(e), "help"));
+  session.sendPrompt(full).catch((e) => appendSystem(String(e), "help"));
 }
 
 async function newChat() {
+  persistActiveChat();
   try {
     await session.stopSession();
   } catch {}
-  localStorage.removeItem(sessionKey());
+  const id = "task-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const task = {
+    id,
+    name: "New task",
+    status: "running",
+    git: getActive() ? getActive().git : null,
+    msg: "Waiting for your first message…",
+    chatHtml: "",
+  };
+  tasks.push(task);
+  activeId = id;
   chatInner.innerHTML = "";
   showEmptyState();
   assistantBody = null;
   typingEl = null;
+  renderTasks();
+  bindLiveTask();
+  sessionTitle.textContent = "New task";
   setLiveStatus("running", "Waiting for your first message…");
+  saveTasks();
+  openCurrentSession();
   session.ensureStarted().catch((e) => appendSystem(String(e), "help"));
+}
+
+async function activateTask(id) {
+  if (id === activeId) {
+    openCurrentSession();
+    return;
+  }
+  persistActiveChat();
+  saveTasks();
+  activeId = id;
+  const t = getActive();
+  chatInner.innerHTML = t.chatHtml && t.chatHtml.trim() ? t.chatHtml : "";
+  assistantBody = null;
+  typingEl = null;
+  if (!chatInner.querySelector(".msg, .agent-callout, .run")) showEmptyState();
+  renderTasks();
+  bindLiveTask();
+  sessionTitle.textContent = t.name;
+  openCurrentSession();
 }
 
 input.addEventListener("input", () => {
@@ -545,14 +764,61 @@ input.addEventListener("keydown", (e) => {
   }
 });
 document.getElementById("send-btn").addEventListener("click", doSend);
-document.getElementById("ref-file").addEventListener("click", openFiles);
 document.getElementById("new-task").addEventListener("click", newChat);
 
+const modelSelect = document.getElementById("model-select");
+const FALLBACK_MODELS = [
+  { provider: "openai", model: "gpt-4o" },
+  { provider: "openai", model: "gpt-4o-mini" },
+  { provider: "anthropic", model: "claude-3-5-sonnet" },
+  { provider: "anthropic", model: "claude-3-5-haiku" },
+  { provider: "openrouter", model: "openai/gpt-4o" },
+  { provider: "openrouter", model: "anthropic/claude-3.5-sonnet" },
+  { provider: "codex", model: "gpt-5.3-codex" },
+];
+async function loadModels() {
+  let list = FALLBACK_MODELS;
+  try {
+    const r = await fetch("/api/models");
+    if (r.ok) {
+      const data = await r.json();
+      const models = Array.isArray(data.models) ? data.models : [];
+      if (models.length) list = models.map((m) => ({ model: String(m) }));
+    }
+  } catch (e) {}
+  modelSelect.innerHTML = list
+    .map((m) => `<option value="${escapeHtml(m.model)}">${escapeHtml(m.model)}</option>`)
+    .join("");
+  const saved = localStorage.getItem("vibin.model");
+  if (saved) modelSelect.value = saved;
+}
+modelSelect.addEventListener("change", () => {
+  const model = modelSelect.value;
+  localStorage.setItem("vibin.model", model);
+  session.sendPrompt(`/model ${model}`).catch((e) => appendSystem(String(e), "help"));
+});
+loadModels();
+
 // ── Boot ─────────────────────────────────────────────────────
-buildLiveTask();
+loadTasks();
+if (!tasks.length) {
+  tasks.push({
+    id: "task-initial",
+    name: "New task",
+    status: "running",
+    git: null,
+    msg: "Waiting for your first message…",
+    chatHtml: "",
+  });
+}
+activeId = tasks[tasks.length - 1].id;
+renderTasks();
+bindLiveTask();
 session.onAgentEvent(renderEvent);
-const restored = loadSession();
-if (!restored) showEmptyState();
+const bootTask = getActive();
+sessionTitle.textContent = bootTask.name;
+chatInner.innerHTML = bootTask.chatHtml && bootTask.chatHtml.trim() ? bootTask.chatHtml : "";
+if (!chatInner.querySelector(".msg, .agent-callout, .run")) showEmptyState();
 loadConfig()
   .then(refreshGit)
   .then(() => session.ensureStarted().catch((e) => appendSystem(String(e), "help")));
