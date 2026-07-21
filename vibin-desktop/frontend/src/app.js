@@ -767,6 +767,8 @@ document.getElementById("send-btn").addEventListener("click", doSend);
 document.getElementById("new-task").addEventListener("click", newChat);
 
 const modelSelect = document.getElementById("model-select");
+const thinkingSelect = document.getElementById("thinking-select");
+const providerDisplay = document.getElementById("provider-display");
 const FALLBACK_MODELS = [
   { provider: "openai", model: "gpt-4o" },
   { provider: "openai", model: "gpt-4o-mini" },
@@ -784,18 +786,27 @@ async function loadModels() {
       const data = await r.json();
       const models = Array.isArray(data.models) ? data.models : [];
       if (models.length) list = models.map((m) => ({ model: String(m) }));
+      if (data.provider) providerDisplay.textContent = `Provider: ${data.provider}`;
+      if (["low", "medium", "high", "xhigh"].includes(data.thinking)) thinkingSelect.value = data.thinking;
     }
   } catch (e) {}
   modelSelect.innerHTML = list
     .map((m) => `<option value="${escapeHtml(m.model)}">${escapeHtml(m.model)}</option>`)
     .join("");
-  const saved = localStorage.getItem("vibin.model");
-  if (saved) modelSelect.value = saved;
+  try {
+    const r = await fetch("/api/models");
+    if (r.ok) {
+      const data = await r.json();
+      if (data.activeModel) modelSelect.value = String(data.activeModel);
+    }
+  } catch (e) {}
 }
 modelSelect.addEventListener("change", () => {
   const model = modelSelect.value;
-  localStorage.setItem("vibin.model", model);
   session.sendPrompt(`/model ${model}`).catch((e) => appendSystem(String(e), "help"));
+});
+thinkingSelect.addEventListener("change", () => {
+  session.sendPrompt(`/thinking ${thinkingSelect.value}`).catch((e) => appendSystem(String(e), "help"));
 });
 loadModels();
 
