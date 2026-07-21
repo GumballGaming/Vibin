@@ -1,4 +1,6 @@
-export type ThinkingMode = "low" | "medium" | "high" | "xhigh";
+import type { ThinkingMode } from "../shared/types";
+
+export type { ThinkingMode } from "../shared/types";
 
 export const THINKING_MODES: Array<{ value: ThinkingMode; label: string; detail: string }> = [
   { value: "low", label: "Low", detail: "Fast, direct answers with minimal deliberation." },

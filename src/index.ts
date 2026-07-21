@@ -19,10 +19,11 @@ export async function runVibin(): Promise<void> {
   if (args.includes("--models")) {
     const dataDir = userVibinDir();
     const cfg = await loadConfig(process.cwd(), dataDir);
-    const out: { models: string[]; provider?: string; model?: string; error?: string } = {
+    const out: { models: string[]; provider?: string; model?: string; thinking?: string; error?: string } = {
       models: [],
       provider: cfg.provider,
       model: cfg.model,
+      thinking: cfg.thinking,
     };
     try {
       if (cfg.provider === "codex") {

@@ -1,4 +1,5 @@
 export type ProviderName = "openai" | "openrouter" | "anthropic" | "compatible" | "codex";
+export type ThinkingMode = "low" | "medium" | "high" | "xhigh";
 
 export type ChatMessage = {
   role: "system" | "user" | "assistant" | "tool";

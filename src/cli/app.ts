@@ -22,7 +22,7 @@ const help = `CHAT\n  Write normally to ask Vibin to inspect, plan, edit, and ve
 export async function startApp(cwd: string, initial: VibinConfig, oneShot?: string, dataDir = cwd, ui: TerminalUI | HeadlessUI = new TerminalUI()): Promise<void> {
   const headless = ui instanceof HeadlessUI; let config = initial; let controller: AbortController | undefined;
   const codexAuth = new CodexAuth();
-  let thinkingMode: ThinkingMode = "medium";
+  let thinkingMode: ThinkingMode = config.thinking;
   let mode: "work" | "plan" = "work";
   const alwaysAllowedCommands = new Set(initial.alwaysAllowedCommands);
   const saveAlwaysAllowedCommands = async (): Promise<void> => {
@@ -37,7 +37,11 @@ export async function startApp(cwd: string, initial: VibinConfig, oneShot?: stri
   let session: Session = { id: `session-${Date.now()}`, updatedAt: new Date().toISOString(), history: [], prompts: [], plan: null };
   const persist = async () => { session = await sessions.save({ ...session, history: agent.getHistory(), prompts }); };
   const setThinkingMode = async (mode: ThinkingMode): Promise<void> => {
-    thinkingMode = mode; agent.setThinkingMode(mode); ui.info(`Thinking mode: ${THINKING_MODES.find((entry) => entry.value === mode)!.label}`);
+    thinkingMode = mode;
+    config = { ...config, thinking: mode, profiles: { ...config.profiles, [config.activeProfile]: { ...config, thinking: mode } } };
+    await saveConfig(dataDir, config);
+    agent.setThinkingMode(mode);
+    ui.info(`Thinking mode: ${THINKING_MODES.find((entry) => entry.value === mode)!.label}`);
   };
   const addProvider = async (): Promise<void> => {
     const provider = await ui.choose("CONNECT A PROVIDER", [
@@ -55,7 +59,7 @@ export async function startApp(cwd: string, initial: VibinConfig, oneShot?: stri
         ui.error(error instanceof Error ? error.message : "Could not fetch ChatGPT models.", `Using the default Codex model (${CODEX_OAUTH_MODEL}).`);
         model = CODEX_OAUTH_MODEL;
       }
-      const profile: ProviderProfile = { provider: "codex", baseUrl: "https://chatgpt.com/backend-api/codex/responses", model };
+      const profile: ProviderProfile = { provider: "codex", baseUrl: "https://chatgpt.com/backend-api/codex/responses", model, thinking: "medium" };
       config = { ...profile, profiles: { ...config.profiles, codex: profile }, activeProfile: "codex", alwaysAllowedCommands: config.alwaysAllowedCommands };
       await saveConfig(dataDir, config); agent = createAgent(); ui.info("ChatGPT/Codex OAuth is connected for this Vibin project."); return;
     }
@@ -63,7 +67,7 @@ export async function startApp(cwd: string, initial: VibinConfig, oneShot?: stri
     ui.panel(`${provider.toUpperCase()} SETUP`, "Paste an API key. Vibin keeps it only in this project's ignored .vibin folder.");
     const apiKey = await ui.secret("API key:"); const baseUrl = provider === "compatible" ? await ui.ask("Provider base URL:") : preset.baseUrl;
     if (!apiKey || !baseUrl) throw new VibinError("Provider setup needs an API key and base URL.");
-    if (!hasUsableApiKey({ provider: provider as ProviderProfile["provider"], apiKey, model: preset.model, baseUrl })) throw new VibinError("The OpenRouter API key is incomplete.", "Create or copy the full key from OpenRouter, then run /provider add.");
+    if (!hasUsableApiKey({ provider: provider as ProviderProfile["provider"], apiKey, model: preset.model, baseUrl, thinking: "medium" })) throw new VibinError("The OpenRouter API key is incomplete.", "Create or copy the full key from OpenRouter, then run /provider add.");
     ui.info("Checking your connection and fetching available models…");
     let model: string;
     while (true) {
@@ -79,7 +83,7 @@ export async function startApp(cwd: string, initial: VibinConfig, oneShot?: stri
       ? (await ui.ask("Provider name:"))
       : provider;
     if (!profileName) throw new VibinError("Provider setup needs a name.");
-    const profile: ProviderProfile = { provider: provider as ProviderProfile["provider"], apiKey, model, baseUrl };
+    const profile: ProviderProfile = { provider: provider as ProviderProfile["provider"], apiKey, model, baseUrl, thinking: "medium" };
     config = { ...profile, profiles: { ...config.profiles, [profileName]: profile }, activeProfile: profileName, alwaysAllowedCommands: config.alwaysAllowedCommands }; await saveConfig(dataDir, config); agent = createAgent(); ui.info(`Saved and activated '${profileName}'.`);
   };
   const legacyListProviders = (): void => {
@@ -96,7 +100,7 @@ export async function startApp(cwd: string, initial: VibinConfig, oneShot?: stri
     const name = await ui.choose("SWITCH PROVIDER", entries.map(([profileName, profile]) => ({
       value: profileName, label: profileName, detail: `${profile.provider} · ${profile.model}${profileName === config.activeProfile ? " · active" : ""}`,
     })));
-    config = activateProfile(config, name); await saveConfig(dataDir, config); agent = createAgent(); ui.info(`Active provider: ${name} (${config.model})`);
+    config = activateProfile(config, name); thinkingMode = config.thinking; await saveConfig(dataDir, config); agent = createAgent(); ui.info(`Active provider: ${name} (${config.model})`);
   };
   const removeProvider = async (requestedName?: string): Promise<void> => {
     const entries = Object.entries(config.profiles);
@@ -251,7 +255,7 @@ export async function startApp(cwd: string, initial: VibinConfig, oneShot?: stri
         const [action, name] = command.value.split(/\s+/, 2);
         if (!action) await manageProviders();
         else if (action === "list") listProviders();
-        else if (action === "use" && name) { config = activateProfile(config, name); await saveConfig(dataDir, config); agent = createAgent(); ui.info(`Active provider: ${name} (${config.model})`); }
+        else if (action === "use" && name) { config = activateProfile(config, name); thinkingMode = config.thinking; await saveConfig(dataDir, config); agent = createAgent(); ui.info(`Active provider: ${name} (${config.model})`); }
         else if (action === "add") await addProvider();
         else if (action === "remove") await removeProvider(name);
         else ui.error("Provider command not understood.", "/provider · /provider list · /provider use <name> · /provider add · /provider remove [name]");

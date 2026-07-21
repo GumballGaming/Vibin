@@ -2,16 +2,17 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { VibinError } from "../shared/errors";
-import type { ProviderName } from "../shared/types";
+import type { ProviderName, ThinkingMode } from "../shared/types";
 
-export type ProviderProfile = { provider: ProviderName; apiKey?: string; model: string; baseUrl: string };
+export type ProviderProfile = { provider: ProviderName; apiKey?: string; model: string; baseUrl: string; thinking: ThinkingMode };
 export type VibinConfig = ProviderProfile & { profiles: Record<string, ProviderProfile>; activeProfile: string; alwaysAllowedCommands: string[] };
 const defaults: Record<Exclude<ProviderName, "compatible">, Omit<ProviderProfile, "provider" | "apiKey">> = {
-  openai: { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1-mini" },
-  openrouter: { baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-4.1-mini" },
-  anthropic: { baseUrl: "https://api.anthropic.com", model: "claude-sonnet-4-20250514" },
-  codex: { baseUrl: "https://chatgpt.com/backend-api/codex/responses", model: "gpt-5.3-codex" },
+  openai: { baseUrl: "https://api.openai.com/v1", model: "gpt-4.1-mini", thinking: "medium" },
+  openrouter: { baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-4.1-mini", thinking: "medium" },
+  anthropic: { baseUrl: "https://api.anthropic.com", model: "claude-sonnet-4-20250514", thinking: "medium" },
+  codex: { baseUrl: "https://chatgpt.com/backend-api/codex/responses", model: "gpt-5.3-codex", thinking: "medium" },
 };
+const isThinkingMode = (value: unknown): value is ThinkingMode => value === "low" || value === "medium" || value === "high" || value === "xhigh";
 
 async function loadDotEnv(cwd: string): Promise<Record<string, string>> {
   const path = join(cwd, ".env"); if (!existsSync(path)) return {};
@@ -22,7 +23,7 @@ async function loadDotEnv(cwd: string): Promise<Record<string, string>> {
   }));
 }
 function defaultProfile(provider: ProviderName = "openai"): ProviderProfile {
-  return provider === "compatible" ? { provider, baseUrl: "", model: "" } : { provider, ...defaults[provider] };
+  return provider === "compatible" ? { provider, baseUrl: "", model: "", thinking: "medium" } : { provider, ...defaults[provider] };
 }
 export function hasUsableApiKey(profile: ProviderProfile): boolean {
   if (!profile.apiKey?.trim()) return false;
@@ -32,7 +33,7 @@ function asProfile(value: unknown): ProviderProfile | undefined {
   if (!value || typeof value !== "object") return undefined;
   const raw = value as Record<string, unknown>;
   if (!["openai", "openrouter", "anthropic", "compatible", "codex"].includes(String(raw.provider)) || typeof raw.model !== "string" || !raw.model.trim() || typeof raw.baseUrl !== "string" || !raw.baseUrl.trim()) return undefined;
-  return { provider: raw.provider as ProviderName, model: raw.model, baseUrl: raw.baseUrl, ...(typeof raw.apiKey === "string" ? { apiKey: raw.apiKey } : {}) };
+  return { provider: raw.provider as ProviderName, model: raw.model, baseUrl: raw.baseUrl, thinking: isThinkingMode(raw.thinking) ? raw.thinking : "medium", ...(typeof raw.apiKey === "string" ? { apiKey: raw.apiKey } : {}) };
 }
 
 export async function loadConfig(cwd: string, dataDir = join(cwd, ".vibin")): Promise<VibinConfig> {
